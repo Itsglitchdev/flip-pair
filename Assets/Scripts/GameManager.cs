@@ -1,10 +1,23 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-    [SerializeField] private float delayBeforeFlipBack = 1f; 
-    
+    public static GameManager Instance { get; private set; }
+
+    [Header("Constants Settings")]
+    private const float DELAYBEFOREFLIPBACK = 1f; 
+
+    [Header("Game Data")]
+    [SerializeField] private GameLevelData gameData;
+
+    [Header("UI Elements")]
+    [SerializeField] private Text gameLevelText;
+    [SerializeField] private Timer timer;
+
+    [SerializeField] private GameObject cardHolderParent;
+
     private GameObject firstCard;
     private GameObject secondCard;
     private string firstCardName;
@@ -14,19 +27,32 @@ public class GameManager : MonoBehaviour
     private int matchedPairs = 0;
     private int totalPairs; 
 
+    private void Awake() {
+
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
     private void Start()
     {
-        totalPairs = 2; 
+        totalPairs = 2;
     }
 
     private void OnEnable()
     {
-        ObjectTest.OnObjectClicked += HandleCardSelection;
+        Card.OnObjectClicked += HandleCardSelection;
     }
 
     private void OnDisable()
     {
-        ObjectTest.OnObjectClicked -= HandleCardSelection;
+        Card.OnObjectClicked -= HandleCardSelection;
     }
 
     private void HandleCardSelection(string objectName, GameObject card)
@@ -80,18 +106,18 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log("Not a match. Flipping cards back.");
             
-            yield return new WaitForSeconds(delayBeforeFlipBack);
+            yield return new WaitForSeconds(DELAYBEFOREFLIPBACK);
             
             if (firstCard != null)
             {
-                ObjectTest firstCardScript = firstCard.GetComponent<ObjectTest>();
+                Card firstCardScript = firstCard.GetComponent<Card>();
                 if (firstCardScript != null)
                     firstCardScript.FlipBack();
             }
             
             if (secondCard != null)
             {
-                ObjectTest secondCardScript = secondCard.GetComponent<ObjectTest>();
+                Card secondCardScript = secondCard.GetComponent<Card>();
                 if (secondCardScript != null)
                     secondCardScript.FlipBack();
             }

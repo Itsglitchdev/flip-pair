@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class ObjectTest : MonoBehaviour, IPointerClickHandler
+public class Card : MonoBehaviour, IPointerClickHandler
 {
     public static Action<string, GameObject> OnObjectClicked;
 
