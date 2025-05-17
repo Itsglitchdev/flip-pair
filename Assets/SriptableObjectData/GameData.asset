@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   levels:
   - matchPairCount: 2
-    levelName: Level 1
+    levelName: LEVEL 1
+    levelDescription: "Flip it, find it, match it \u2014 twice the fun!"
     cardDetails:
     - faceOn:
         name: 0
@@ -40,3 +41,59 @@ MonoBehaviour:
       faceOff:
         name: 0
         sprite: {fileID: 21300000, guid: 3d25a10befcf4ae4e8484075214b4a2d, type: 3}
+  - matchPairCount: 4
+    levelName: LEVEL 2
+    levelDescription: The cards are hiding... match all 4 to win!
+    cardDetails:
+    - faceOn:
+        name: 3
+        sprite: {fileID: 21300000, guid: d5a7df103c5d4b54f9610674b319c69c, type: 3}
+      faceOff:
+        name: 0
+        sprite: {fileID: 21300000, guid: 3d25a10befcf4ae4e8484075214b4a2d, type: 3}
+    - faceOn:
+        name: 3
+        sprite: {fileID: 21300000, guid: d5a7df103c5d4b54f9610674b319c69c, type: 3}
+      faceOff:
+        name: 0
+        sprite: {fileID: 21300000, guid: 3d25a10befcf4ae4e8484075214b4a2d, type: 3}
+    - faceOn:
+        name: 0
+        sprite: {fileID: 21300000, guid: 1e520172c564a854b835b12cb516c980, type: 3}
+      faceOff:
+        name: 0
+        sprite: {fileID: 21300000, guid: 3d25a10befcf4ae4e8484075214b4a2d, type: 3}
+    - faceOn:
+        name: 2
+        sprite: {fileID: 21300000, guid: 256394a9918b8de488caa712c1002e07, type: 3}
+      faceOff:
+        name: 0
+        sprite: {fileID: 21300000, guid: 3d25a10befcf4ae4e8484075214b4a2d, type: 3}
+    - faceOn:
+        name: 0
+        sprite: {fileID: 21300000, guid: 1e520172c564a854b835b12cb516c980, type: 3}
+      faceOff:
+        name: 0
+        sprite: {fileID: 21300000, guid: 3d25a10befcf4ae4e8484075214b4a2d, type: 3}
+    - faceOn:
+        name: 1
+        sprite: {fileID: 21300000, guid: e5bc3e873604a874689cc28bb295591d, type: 3}
+      faceOff:
+        name: 0
+        sprite: {fileID: 21300000, guid: 3d25a10befcf4ae4e8484075214b4a2d, type: 3}
+    - faceOn:
+        name: 1
+        sprite: {fileID: 21300000, guid: e5bc3e873604a874689cc28bb295591d, type: 3}
+      faceOff:
+        name: 0
+        sprite: {fileID: 21300000, guid: 3d25a10befcf4ae4e8484075214b4a2d, type: 3}
+    - faceOn:
+        name: 2
+        sprite: {fileID: 21300000, guid: 256394a9918b8de488caa712c1002e07, type: 3}
+      faceOff:
+        name: 0
+        sprite: {fileID: 21300000, guid: 3d25a10befcf4ae4e8484075214b4a2d, type: 3}
+  - matchPairCount: 3
+    levelName: LEVEL 3
+    levelDescription: "There\u2019s a sneaky bomb pair. Can you outsmart it?"
+    cardDetails: []

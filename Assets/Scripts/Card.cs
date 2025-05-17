@@ -6,11 +6,11 @@ using UnityEngine.UI;
 
 public class Card : MonoBehaviour, IPointerClickHandler
 {
-    public static Action<string, GameObject> OnObjectClicked;
+    public static Action<FaceOnType, GameObject> OnObjectClicked;
 
-    [SerializeField] private string objectName;
-    [SerializeField] private Image frontImage;
-    [SerializeField] private Image backImage;
+    [SerializeField] public FaceOnType objectName;
+    [SerializeField] public Image frontImage;
+    [SerializeField] public Image backImage;
     
     [SerializeField] private float rotationDuration = 0.5f; 
     

@@ -12,6 +12,7 @@ public class LevelData
 {
     public int matchPairCount = 0;
     public string levelName = "New Level";
+    public string levelDescription = "";
     public List<CardDetails> cardDetails = new List<CardDetails>();
 }
 
@@ -32,6 +33,6 @@ public class FaceOn
 [System.Serializable]
 public class FaceOff
 {
-    public FaceOffType name;
+    public FaceOffType name = FaceOffType.FaceOff_1;
     public Sprite sprite;
 }

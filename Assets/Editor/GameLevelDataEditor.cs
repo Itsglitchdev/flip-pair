@@ -1,64 +1,34 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using System.Collections.Generic;
 
 [CustomEditor(typeof(GameLevelData))]
 public class GameLevelDataEditor : Editor
 {
-    private GameLevelData gameData;
-    private SerializedProperty levelsProperty;
-    
-    // State tracking
-    private List<bool> levelFoldouts = new List<bool>();
+    private GameLevelData gameLevelData;
+    private bool[] showLevelsFoldout;
+    private bool[] showCardsFoldout;
     private Vector2 scrollPosition;
-    
-    // Style variables - declared but initialized in OnGUI
-    private GUIStyle headerStyle;
-    private GUIStyle levelHeaderStyle;
-    private GUIStyle matchPairStyle;
-    private GUIStyle infoBoxStyle;
     
     private void OnEnable()
     {
-        gameData = (GameLevelData)target;
-        levelsProperty = serializedObject.FindProperty("levels");
-        
-        // Initialize foldouts list
-        levelFoldouts.Clear();
-        for (int i = 0; i < gameData.levels.Count; i++)
-        {
-            levelFoldouts.Add(false);
-        }
+        gameLevelData = (GameLevelData)target;
+        InitializeFoldouts();
     }
     
-    private void EnsureStylesInitialized()
+    private void InitializeFoldouts()
     {
-        // Safely initialize styles during OnGUI
-        if (headerStyle == null)
+        // Initialize foldout arrays
+        if (gameLevelData.levels != null)
         {
-            headerStyle = new GUIStyle(EditorStyles.boldLabel);
-            headerStyle.fontSize = 14;
-        }
-        
-        if (levelHeaderStyle == null)
-        {
-            levelHeaderStyle = new GUIStyle(EditorStyles.foldout);
-            levelHeaderStyle.fontStyle = FontStyle.Bold;
-        }
-        
-        if (matchPairStyle == null)
-        {
-            matchPairStyle = new GUIStyle(EditorStyles.helpBox);
-            matchPairStyle.padding = new RectOffset(10, 10, 10, 10);
-            matchPairStyle.margin = new RectOffset(5, 5, 5, 5);
-        }
-        
-        if (infoBoxStyle == null)
-        {
-            infoBoxStyle = new GUIStyle(EditorStyles.helpBox);
-            infoBoxStyle.normal.textColor = Color.yellow;
-            infoBoxStyle.fontSize = 11;
-            infoBoxStyle.padding = new RectOffset(10, 10, 7, 7);
+            showLevelsFoldout = new bool[gameLevelData.levels.Count];
+            showCardsFoldout = new bool[gameLevelData.levels.Count];
+            
+            // Default to showing all levels
+            for (int i = 0; i < showLevelsFoldout.Length; i++)
+            {
+                showLevelsFoldout[i] = true;
+            }
         }
     }
     
@@ -66,156 +36,121 @@ public class GameLevelDataEditor : Editor
     {
         serializedObject.Update();
         
-        // Initialize styles during OnGUI to avoid errors
-        EnsureStylesInitialized();
-        
-        // Header
+        EditorGUILayout.Space(10);
+        EditorGUILayout.LabelField("Game Level Data Manager", EditorStyles.boldLabel);
         EditorGUILayout.Space(5);
-        EditorGUILayout.LabelField("Game Level Data Manager", headerStyle);
         
-        // Level Management Buttons
+        // Add Level and Delete Last Level buttons in the same row
         EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Add New Level", GUILayout.Height(25)))
+        
+        if (GUILayout.Button("Add Level", GUILayout.Height(30)))
         {
             AddNewLevel();
         }
         
-        if (gameData.levels.Count > 0)
+        GUI.enabled = gameLevelData.levels.Count > 0;
+        if (GUILayout.Button("Delete Last Level", GUILayout.Height(30)))
         {
-            if (GUILayout.Button("Remove Last Level", GUILayout.Height(25)))
-            {
-                if (EditorUtility.DisplayDialog("Remove Level", 
-                    "Are you sure you want to remove the last level and all its cards?", 
-                    "Yes", "Cancel"))
-                {
-                    RemoveLastLevel();
-                }
-            }
+            DeleteLastLevel();
         }
-        EditorGUILayout.EndHorizontal();
+        GUI.enabled = true;
         
-        // Info about levels
-        if (gameData.levels.Count > 0)
-        {
-            EditorGUILayout.BeginVertical(infoBoxStyle);
-            EditorGUILayout.LabelField($"Total Levels: {gameData.levels.Count}", EditorStyles.miniLabel);
-            
-            int totalCards = 0;
-            foreach (var level in gameData.levels)
-            {
-                totalCards += level.cardDetails.Count;
-            }
-            EditorGUILayout.LabelField($"Total Cards Across All Levels: {totalCards}", EditorStyles.miniLabel);
-            EditorGUILayout.EndVertical();
-        }
+        EditorGUILayout.EndHorizontal();
         
         EditorGUILayout.Space(10);
         
-        // Draw levels
+        // Check if there are levels to display
+        if (gameLevelData.levels == null || gameLevelData.levels.Count == 0)
+        {
+            EditorGUILayout.HelpBox("No levels available. Add a level to get started.", MessageType.Info);
+            serializedObject.ApplyModifiedProperties();
+            return;
+        }
+        
+        // Begin scroll view for levels
         scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
         
-        // Draw all levels
-        for (int i = 0; i < gameData.levels.Count; i++)
+        // Display all levels
+        for (int levelIndex = 0; levelIndex < gameLevelData.levels.Count; levelIndex++)
         {
-            DrawLevel(i);
+            DrawLevelSection(levelIndex);
         }
         
         EditorGUILayout.EndScrollView();
         
         serializedObject.ApplyModifiedProperties();
+        
+        // Save changes when something is modified
+        if (GUI.changed)
+        {
+            EditorUtility.SetDirty(target);
+        }
     }
     
-    private void DrawLevel(int levelIndex)
+    private void DrawLevelSection(int levelIndex)
     {
-        SerializedProperty levelProperty = levelsProperty.GetArrayElementAtIndex(levelIndex);
-        SerializedProperty levelNameProperty = levelProperty.FindPropertyRelative("levelName");
-        SerializedProperty matchPairCountProperty = levelProperty.FindPropertyRelative("matchPairCount");
-        SerializedProperty cardsProperty = levelProperty.FindPropertyRelative("cardDetails");
+        LevelData level = gameLevelData.levels[levelIndex];
+        SerializedProperty levelProperty = serializedObject.FindProperty("levels").GetArrayElementAtIndex(levelIndex);
         
-        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        EditorGUILayout.BeginVertical(GUI.skin.box);
         
-        // Level header and controls
+        // Level header and foldout
         EditorGUILayout.BeginHorizontal();
+        showLevelsFoldout[levelIndex] = EditorGUILayout.Foldout(showLevelsFoldout[levelIndex], $"Level {levelIndex + 1}: {level.levelName}", true, EditorStyles.foldoutHeader);
         
-        // Use a foldout for the level
-        // Ensure the levelFoldouts list is properly sized
-        while (levelIndex >= levelFoldouts.Count)
+        // Delete level button
+        if (GUILayout.Button("X", GUILayout.Width(20)))
         {
-            levelFoldouts.Add(false);
-        }
-        
-        levelFoldouts[levelIndex] = EditorGUILayout.Foldout(levelFoldouts[levelIndex], 
-            $"Level {levelIndex + 1}: {gameData.levels[levelIndex].levelName}", true);
-        
-        // Display card count
-        EditorGUILayout.LabelField($"Cards: {gameData.levels[levelIndex].cardDetails.Count}", 
-            GUILayout.Width(70));
-        
-        if (GUILayout.Button("Add Card", EditorStyles.miniButton, GUILayout.Width(70)))
-        {
-            AddCardToLevel(levelIndex);
-        }
-        
-        if (gameData.levels[levelIndex].cardDetails.Count > 0 && 
-            GUILayout.Button("Clear Cards", EditorStyles.miniButton, GUILayout.Width(70)))
-        {
-            if (EditorUtility.DisplayDialog("Clear Cards", 
-                $"Are you sure you want to remove all cards from Level {levelIndex + 1}?", 
-                "Yes", "Cancel"))
+            if (EditorUtility.DisplayDialog("Delete Level", $"Are you sure you want to delete level '{level.levelName}'?", "Delete", "Cancel"))
             {
-                ClearCardsInLevel(levelIndex);
-            }
-        }
-        
-        EditorGUILayout.EndHorizontal();
-        
-        // Level name and match pair count fields
-        EditorGUILayout.PropertyField(levelNameProperty, new GUIContent("Level Name"));
-        
-        // Match Pair Count field with validation and helper
-        EditorGUILayout.BeginVertical(matchPairStyle);
-        
-        // Display warning if matchPairCount is greater than available unique cards
-        int uniqueCardCount = GetUniqueCardCount(levelIndex);
-        bool isInvalid = gameData.levels[levelIndex].matchPairCount > uniqueCardCount && uniqueCardCount > 0;
-        
-        GUI.color = isInvalid ? new Color(1f, 0.7f, 0.7f) : Color.white;
-        
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.PropertyField(matchPairCountProperty, new GUIContent("Match Pair Count"));
-        
-        // Auto-set button
-        if (gameData.levels[levelIndex].cardDetails.Count > 0)
-        {
-            if (GUILayout.Button("Auto-Set", EditorStyles.miniButton, GUILayout.Width(60)))
-            {
-                AutoSetMatchPairCount(levelIndex);
+                DeleteLevel(levelIndex);
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.EndVertical();
+                return;
             }
         }
         EditorGUILayout.EndHorizontal();
         
-        // Helpful information about match pairs
-        if (isInvalid)
-        {
-            EditorGUILayout.HelpBox($"Warning: Match pair count ({gameData.levels[levelIndex].matchPairCount}) exceeds unique card count ({uniqueCardCount}).", MessageType.Warning);
-        }
-        
-        GUI.color = Color.white;
-        
-        // Simple explanation of what this field means
-        EditorGUILayout.LabelField("Number of pairs players need to match to complete this level.", 
-            EditorStyles.miniLabel);
-        
-        EditorGUILayout.EndVertical();
-        
-        // Draw cards if level is expanded
-        if (levelFoldouts[levelIndex])
+        if (showLevelsFoldout[levelIndex])
         {
             EditorGUI.indentLevel++;
             
-            for (int cardIndex = 0; cardIndex < gameData.levels[levelIndex].cardDetails.Count; cardIndex++)
+            // Level name
+            SerializedProperty levelNameProp = levelProperty.FindPropertyRelative("levelName");
+            EditorGUILayout.PropertyField(levelNameProp, new GUIContent("Level Name"));
+            
+            // Description
+            SerializedProperty descriptionProp = levelProperty.FindPropertyRelative("levelDescription");
+            EditorGUILayout.PropertyField(descriptionProp, new GUIContent("Level Description"));
+
+            // Match pair count
+            SerializedProperty matchPairCountProp = levelProperty.FindPropertyRelative("matchPairCount");
+            EditorGUILayout.PropertyField(matchPairCountProp, new GUIContent("Match Pair Count"));
+            
+            EditorGUILayout.Space(5);
+            
+            // Card Details Section
+            EditorGUILayout.LabelField("Card Details", EditorStyles.boldLabel);
+            
+            SerializedProperty cardDetailsProp = levelProperty.FindPropertyRelative("cardDetails");
+            
+            // Display existing cards
+            if (level.cardDetails != null && level.cardDetails.Count > 0)
             {
-                DrawCard(levelIndex, cardIndex, cardsProperty);
+                for (int cardIndex = 0; cardIndex < level.cardDetails.Count; cardIndex++)
+                {
+                    DrawCardSection(cardDetailsProp, cardIndex);
+                }
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("No cards added yet. Add cards to this level.", MessageType.Info);
+            }
+            
+            // Add Card button
+            if (GUILayout.Button("Add Card"))
+            {
+                AddNewCard(levelIndex);
             }
             
             EditorGUI.indentLevel--;
@@ -225,209 +160,119 @@ public class GameLevelDataEditor : Editor
         EditorGUILayout.Space(5);
     }
     
-    private int GetUniqueCardCount(int levelIndex)
+    private void DrawCardSection(SerializedProperty cardDetailsProp, int cardIndex)
     {
-        // Simple implementation - just returns the card count
-        // Could be enhanced to actually check for unique FaceOn/FaceOff combinations if needed
-        return gameData.levels[levelIndex].cardDetails.Count;
-    }
-    
-    private void AutoSetMatchPairCount(int levelIndex)
-    {
-        Undo.RecordObject(gameData, "Auto-Set Match Pair Count");
-        
-        // Set match pair count to the total number of unique cards
-        int uniqueCardCount = GetUniqueCardCount(levelIndex);
-        gameData.levels[levelIndex].matchPairCount = uniqueCardCount;
-        
-        EditorUtility.SetDirty(gameData);
-    }
-    
-    private void DrawCard(int levelIndex, int cardIndex, SerializedProperty cardsProperty)
-    {
-        SerializedProperty cardProperty = cardsProperty.GetArrayElementAtIndex(cardIndex);
-        SerializedProperty faceOnProperty = cardProperty.FindPropertyRelative("faceOn");
-        SerializedProperty faceOffProperty = cardProperty.FindPropertyRelative("faceOff");
+        SerializedProperty cardProp = cardDetailsProp.GetArrayElementAtIndex(cardIndex);
         
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
         
-        // Card header with remove button
         EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField($"Card #{cardIndex + 1}", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField($"Card {cardIndex + 1}", EditorStyles.boldLabel);
         
-        // Card navigation and removal
-        EditorGUILayout.BeginHorizontal(GUILayout.Width(150));
-        
-        // Duplicate button
-        if (GUILayout.Button("Duplicate", EditorStyles.miniButtonLeft, GUILayout.Width(70)))
+        // Delete card button
+        if (GUILayout.Button("Remove", GUILayout.Width(60)))
         {
-            DuplicateCard(levelIndex, cardIndex);
-        }
-        
-        // Up button
-        GUI.enabled = cardIndex > 0;
-        if (GUILayout.Button("↑", EditorStyles.miniButtonMid, GUILayout.Width(25)))
-        {
-            MoveCardUp(levelIndex, cardIndex);
-        }
-        
-        // Down button
-        GUI.enabled = cardIndex < gameData.levels[levelIndex].cardDetails.Count - 1;
-        if (GUILayout.Button("↓", EditorStyles.miniButtonMid, GUILayout.Width(25)))
-        {
-            MoveCardDown(levelIndex, cardIndex);
-        }
-        
-        // Remove button
-        GUI.enabled = true;
-        if (GUILayout.Button("X", EditorStyles.miniButtonRight, GUILayout.Width(25)))
-        {
-            if (EditorUtility.DisplayDialog("Remove Card", 
-                $"Are you sure you want to remove Card #{cardIndex + 1}?", 
-                "Yes", "Cancel"))
-            {
-                RemoveCard(levelIndex, cardIndex);
-                return; // Early exit to avoid accessing deleted card
-            }
+            cardDetailsProp.DeleteArrayElementAtIndex(cardIndex);
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+            return;
         }
         EditorGUILayout.EndHorizontal();
         
-        EditorGUILayout.EndHorizontal();
-        
-        // Face On
-        EditorGUILayout.LabelField("Face On", EditorStyles.miniBoldLabel);
         EditorGUI.indentLevel++;
-        EditorGUILayout.PropertyField(faceOnProperty.FindPropertyRelative("name"), new GUIContent("Type"));
-        EditorGUILayout.PropertyField(faceOnProperty.FindPropertyRelative("sprite"), new GUIContent("Sprite"));
+        
+        // Face On properties
+        SerializedProperty faceOnProp = cardProp.FindPropertyRelative("faceOn");
+        EditorGUILayout.LabelField("Face On", EditorStyles.boldLabel);
+        EditorGUI.indentLevel++;
+        EditorGUILayout.PropertyField(faceOnProp.FindPropertyRelative("name"), new GUIContent("Type"));
+        EditorGUILayout.PropertyField(faceOnProp.FindPropertyRelative("sprite"), new GUIContent("Sprite"));
         EditorGUI.indentLevel--;
         
         EditorGUILayout.Space(5);
         
-        // Face Off
-        EditorGUILayout.LabelField("Face Off", EditorStyles.miniBoldLabel);
+        // Face Off properties
+        SerializedProperty faceOffProp = cardProp.FindPropertyRelative("faceOff");
+        EditorGUILayout.LabelField("Face Off", EditorStyles.boldLabel);
         EditorGUI.indentLevel++;
-        EditorGUILayout.PropertyField(faceOffProperty.FindPropertyRelative("name"), new GUIContent("Type"));
-        EditorGUILayout.PropertyField(faceOffProperty.FindPropertyRelative("sprite"), new GUIContent("Sprite"));
+        EditorGUILayout.PropertyField(faceOffProp.FindPropertyRelative("name"), new GUIContent("Type"));
+        EditorGUILayout.PropertyField(faceOffProp.FindPropertyRelative("sprite"), new GUIContent("Sprite"));
         EditorGUI.indentLevel--;
         
+        EditorGUI.indentLevel--;
         EditorGUILayout.EndVertical();
-        EditorGUILayout.Space(5);
+        EditorGUILayout.Space(2);
     }
-    
-    // --- Level Operations ---
     
     private void AddNewLevel()
     {
-        Undo.RecordObject(gameData, "Add Level");
+        // Create a new level and add it to the list
+        LevelData newLevel = new LevelData
+        {
+            levelName = $"Level {gameLevelData.levels.Count + 1}",
+            matchPairCount = 0,
+            cardDetails = new List<CardDetails>()
+        };
         
-        LevelData newLevel = new LevelData();
-        newLevel.levelName = $"Level {gameData.levels.Count + 1}";
-        gameData.levels.Add(newLevel);
-        levelFoldouts.Add(true); // Auto-expand new level
+        gameLevelData.levels.Add(newLevel);
         
-        EditorUtility.SetDirty(gameData);
+        // Update foldouts array
+        System.Array.Resize(ref showLevelsFoldout, gameLevelData.levels.Count);
+        System.Array.Resize(ref showCardsFoldout, gameLevelData.levels.Count);
+        showLevelsFoldout[gameLevelData.levels.Count - 1] = true;
+        
+        EditorUtility.SetDirty(target);
     }
     
-    private void RemoveLastLevel()
+    private void DeleteLastLevel()
     {
-        if (gameData.levels.Count == 0) return;
-        
-        Undo.RecordObject(gameData, "Remove Level");
-        
-        int lastIndex = gameData.levels.Count - 1;
-        gameData.levels.RemoveAt(lastIndex);
-        
-        // Make sure we don't go out of bounds
-        if (lastIndex < levelFoldouts.Count)
+        if (gameLevelData.levels.Count > 0)
         {
-            levelFoldouts.RemoveAt(lastIndex);
+            gameLevelData.levels.RemoveAt(gameLevelData.levels.Count - 1);
+            
+            // Update foldouts array
+            System.Array.Resize(ref showLevelsFoldout, gameLevelData.levels.Count);
+            System.Array.Resize(ref showCardsFoldout, gameLevelData.levels.Count);
+            
+            EditorUtility.SetDirty(target);
+        }
+    }
+    
+    private void DeleteLevel(int levelIndex)
+    {
+        gameLevelData.levels.RemoveAt(levelIndex);
+        
+        // Update the foldout arrays
+        bool[] newLevelsFoldout = new bool[gameLevelData.levels.Count];
+        bool[] newCardsFoldout = new bool[gameLevelData.levels.Count];
+        
+        // Copy the remaining foldout states
+        for (int i = 0, j = 0; i < showLevelsFoldout.Length; i++)
+        {
+            if (i != levelIndex)
+            {
+                newLevelsFoldout[j] = showLevelsFoldout[i];
+                newCardsFoldout[j] = showCardsFoldout[i];
+                j++;
+            }
         }
         
-        EditorUtility.SetDirty(gameData);
+        showLevelsFoldout = newLevelsFoldout;
+        showCardsFoldout = newCardsFoldout;
+        
+        EditorUtility.SetDirty(target);
     }
     
-    // --- Card Operations ---
-    
-    private void AddCardToLevel(int levelIndex)
+    private void AddNewCard(int levelIndex)
     {
-        Undo.RecordObject(gameData, "Add Card");
-        
+        // Create a new card and add it to the level
         CardDetails newCard = new CardDetails
         {
             faceOn = new FaceOn(),
             faceOff = new FaceOff()
         };
         
-        gameData.levels[levelIndex].cardDetails.Add(newCard);
-        EditorUtility.SetDirty(gameData);
-    }
-    
-    private void DuplicateCard(int levelIndex, int cardIndex)
-    {
-        Undo.RecordObject(gameData, "Duplicate Card");
-        
-        // Create a new card with same data
-        CardDetails original = gameData.levels[levelIndex].cardDetails[cardIndex];
-        CardDetails duplicate = new CardDetails
-        {
-            faceOn = new FaceOn
-            {
-                name = original.faceOn.name,
-                sprite = original.faceOn.sprite
-            },
-            faceOff = new FaceOff
-            {
-                name = original.faceOff.name,
-                sprite = original.faceOff.sprite
-            }
-        };
-        
-        // Insert the duplicate right after the original
-        gameData.levels[levelIndex].cardDetails.Insert(cardIndex + 1, duplicate);
-        EditorUtility.SetDirty(gameData);
-    }
-    
-    private void RemoveCard(int levelIndex, int cardIndex)
-    {
-        Undo.RecordObject(gameData, "Remove Card");
-        
-        gameData.levels[levelIndex].cardDetails.RemoveAt(cardIndex);
-        EditorUtility.SetDirty(gameData);
-    }
-    
-    private void ClearCardsInLevel(int levelIndex)
-    {
-        Undo.RecordObject(gameData, "Clear Cards");
-        
-        gameData.levels[levelIndex].cardDetails.Clear();
-        EditorUtility.SetDirty(gameData);
-    }
-    
-    private void MoveCardUp(int levelIndex, int cardIndex)
-    {
-        if (cardIndex <= 0) return;
-        
-        Undo.RecordObject(gameData, "Move Card Up");
-        
-        var cards = gameData.levels[levelIndex].cardDetails;
-        var temp = cards[cardIndex];
-        cards[cardIndex] = cards[cardIndex - 1];
-        cards[cardIndex - 1] = temp;
-        
-        EditorUtility.SetDirty(gameData);
-    }
-    
-    private void MoveCardDown(int levelIndex, int cardIndex)
-    {
-        var cards = gameData.levels[levelIndex].cardDetails;
-        if (cardIndex >= cards.Count - 1) return;
-        
-        Undo.RecordObject(gameData, "Move Card Down");
-        
-        var temp = cards[cardIndex];
-        cards[cardIndex] = cards[cardIndex + 1];
-        cards[cardIndex + 1] = temp;
-        
-        EditorUtility.SetDirty(gameData);
+        gameLevelData.levels[levelIndex].cardDetails.Add(newCard);
+        EditorUtility.SetDirty(target);
     }
 }
